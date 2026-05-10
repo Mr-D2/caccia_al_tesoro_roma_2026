@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🏛️ Caccia al Tesoro · Roma 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"/>
+<style>
+:root {
+  --bring-blue:  #1a3c8f;
+  --bring-red:   #c0201e;
+  --bring-green: #2a8a2a;
+  --bring-black: #111111;
+  --bring-white: #f8f8f8;
+  --gold:        #e0a020;
+  --gold-light:  #fff3cc;
+  --radius:      16px;
+  --shadow:      0 8px 32px rgba(0,0,0,0.18);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bring-black);
+  color: var(--bring-white);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── BACKGROUND TEXTURE ── */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background: 
+    radial-gradient(ellipse at 20% 10%, rgba(26,60,143,0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(192,32,30,0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 40%, rgba(42,138,42,0.12) 0%, transparent 50%);
+  pointer-events: none; z-index:0;
+}
+
+.app { position:relative; z-index:1; max-width:480px; margin:0 auto; min-height:100vh; }
+
+/* ── SCREEN SYSTEM ── */
+.screen { display:none; flex-direction:column; min-height:100vh; animation: fadeIn .4s ease; }
+.screen.active { display:flex; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── HEADER ── */
+.header {
+  background: linear-gradient(135deg, var(--bring-black) 0%, #1a1a2e 100%);
+  border-bottom: 3px solid;
+  padding: 16px 20px 12px;
+  display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-logo { font-family:'Bebas Neue'; font-size:22px; letter-spacing:2px; line-height:1; }
+.header-sub { font-size:11px; opacity:.6; letter-spacing:1px; text-transform:uppercase; }
+.header-badge {
+  margin-left:auto;
+  padding:4px 12px; border-radius:20px;
+  font-size:12px; font-weight:800; letter-spacing:.5px;
+}
+.score-pill {
+  background: var(--gold);
+  color: var(--bring-black);
+  padding: 4px 14px; border-radius:20px;
+  font-size:13px; font-weight:900;
+}
+
+/* ── GROUP COLORS ── */
+.grp-A .header { border-color: var(--bring-red); }
+.grp-A .header-badge { background:var(--bring-red); color:#fff; }
+.grp-B .header { border-color: var(--bring-blue); }
+.grp-B .header-badge { background:var(--bring-blue); color:#fff; }
+.grp-C .header { border-color: var(--bring-green); }
+.grp-C .header-badge { background:var(--bring-green); color:#fff; }
+
+/* ── CONTENT ── */
+.content { flex:1; padding:20px 16px 100px; }
+
+/* ── LOGIN SCREEN ── */
+.login-hero {
+  text-align:center;
+  padding: 40px 20px 30px;
+}
+.login-title {
+  font-family:'Bebas Neue';
+  font-size:52px; line-height:1;
+  letter-spacing:3px;
+  background: linear-gradient(135deg, #fff 0%, #ccc 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.login-subtitle {
+  font-size:14px; opacity:.7; letter-spacing:2px; text-transform:uppercase;
+  margin-top:8px;
+}
+.colosseo-icon { font-size:72px; margin:20px 0; filter:drop-shadow(0 4px 12px rgba(0,0,0,.5)); }
+
+.pin-section { padding:0 20px 40px; }
+.pin-label { font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; opacity:.7; margin-bottom:12px; text-align:center; }
+
+.group-cards { display:flex; flex-direction:column; gap:12px; }
+.group-card {
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  cursor:pointer;
+  border: 2px solid transparent;
+  transition: all .2s;
+  display:flex; align-items:center; gap:16px;
+}
+.group-card:active { transform:scale(.97); }
+.group-card.sel { border-color: currentColor; }
+.gc-A { background: rgba(192,32,30,.15); color:var(--bring-red); }
+.gc-B { background: rgba(26,60,143,.2); color:#6699ff; }
+.gc-C { background: rgba(42,138,42,.15); color:#66cc66; }
+.gc-emoji { font-size:32px; }
+.gc-info { flex:1; }
+.gc-name { font-size:18px; font-weight:900; }
+.gc-theme { font-size:12px; opacity:.7; margin-top:2px; }
+
+.pin-input-wrap { margin-top:24px; }
+.pin-input {
+  width:100%; padding:16px 20px;
+  background: rgba(255,255,255,.08);
+  border: 2px solid rgba(255,255,255,.15);
+  border-radius: var(--radius);
+  color:#fff; font-size:28px; font-weight:900;
+  text-align:center; letter-spacing:8px;
+  font-family:'Bebas Neue';
+  outline:none;
+  transition: border-color .2s;
+}
+.pin-input:focus { border-color: rgba(255,255,255,.4); }
+.pin-input::placeholder { opacity:.3; letter-spacing:4px; font-size:18px; }
+
+.btn {
+  width:100%; padding:16px;
+  border:none; border-radius: var(--radius);
+  font-size:17px; font-weight:900; font-family:'Nunito';
+  cursor:pointer; transition: all .15s;
+  letter-spacing:.5px; margin-top:16px;
+}
+.btn:active { transform:scale(.97); }
+.btn-primary { background:var(--gold); color:var(--bring-black); }
+.btn-secondary { background:rgba(255,255,255,.1); color:#fff; border:1px solid rgba(255,255,255,.2); }
+.btn-success { background:var(--bring-green); color:#fff; }
+.btn-danger  { background:var(--bring-red); color:#fff; }
+
+/* ── MAP SCREEN ── */
+.map-wrap { position:relative; border-radius:var(--radius); overflow:hidden; height:260px; background:#1a1a2e; margin-bottom:16px; }
+#map { width:100%; height:100%; }
+.map-overlay {
+  position:absolute; bottom:0; left:0; right:0;
+  background:linear-gradient(transparent, rgba(0,0,0,.8));
+  padding:16px; pointer-events:none;
+}
+
+.stop-list { display:flex; flex-direction:column; gap:10px; }
+.stop-item {
+  border-radius:var(--radius);
+  padding:14px 16px;
+  display:flex; align-items:center; gap:14px;
+  border:2px solid transparent;
+  transition: all .2s;
+  cursor:pointer;
+}
+.stop-item.locked   { background:rgba(255,255,255,.05); opacity:.55; cursor:default; }
+.stop-item.unlocked { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.15); }
+.stop-item.active   { background:rgba(224,160,32,.12); border-color:var(--gold); }
+.stop-item.done     { background:rgba(42,138,42,.12); border-color:var(--bring-green); opacity:.75; }
+.stop-num { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:16px; flex-shrink:0; }
+.stop-info { flex:1; }
+.stop-name { font-size:15px; font-weight:800; }
+.stop-dist { font-size:12px; opacity:.6; margin-top:2px; }
+.stop-status { font-size:20px; }
+
+/* ── TAPPA SCREEN ── */
+.tappa-hero {
+  border-radius:var(--radius);
+  padding:24px 20px;
+  margin-bottom:16px;
+  position:relative; overflow:hidden;
+}
+.tappa-hero::before {
+  content:'';
+  position:absolute; inset:0;
+  background: rgba(0,0,0,.3);
+}
+.tappa-hero-inner { position:relative; z-index:1; }
+.tappa-num { font-size:12px; font-weight:700; letter-spacing:3px; text-transform:uppercase; opacity:.8; }
+.tappa-name { font-family:'Bebas Neue'; font-size:38px; letter-spacing:2px; line-height:1.1; margin:4px 0; }
+.tappa-tema { font-size:13px; opacity:.8; font-weight:700; }
+
+.section-card {
+  border-radius:var(--radius);
+  padding:18px;
+  margin-bottom:14px;
+}
+.section-title {
+  font-size:13px; font-weight:800; letter-spacing:2px; text-transform:uppercase;
+  margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.section-title-icon { font-size:18px; }
+
+/* FACTS */
+.facts-card { background:rgba(192,32,30,.1); border:1px solid rgba(192,32,30,.3); }
+.fact-item { display:flex; gap:10px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+.fact-item:last-child { border-bottom:none; padding-bottom:0; }
+.fact-arrow { color:var(--bring-red); font-weight:900; flex-shrink:0; margin-top:1px; }
+.fact-text { font-size:14px; line-height:1.55; }
+
+/* RIDDLE */
+.riddle-card { background:rgba(26,60,143,.15); border:1px solid rgba(26,60,143,.4); }
+.riddle-text { font-size:15px; line-height:1.6; font-style:italic; color:#ccd8ff; }
+.riddle-text p { margin-bottom:10px; }
+.riddle-text p:last-child { margin-bottom:0; }
+.riddle-hint { font-size:12px; opacity:.6; margin-top:12px; padding:10px 12px; background:rgba(255,255,255,.05); border-radius:8px; font-style:normal; }
+
+/* ANSWER INPUT */
+.answer-section { margin-top:16px; }
+.answer-label { font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; opacity:.7; margin-bottom:8px; }
+.answer-input {
+  width:100%;
+  background:rgba(255,255,255,.08);
+  border:2px solid rgba(255,255,255,.15);
+  border-radius:12px;
+  color:#fff; font-size:16px; font-family:'Nunito'; font-weight:600;
+  padding:14px 16px; outline:none; resize:none; min-height:80px;
+  transition: border-color .2s;
+}
+.answer-input:focus { border-color:rgba(255,255,255,.4); }
+
+.attempt-feedback {
+  margin-top:10px; padding:12px 14px; border-radius:10px;
+  font-size:14px; font-weight:700; text-align:center;
+  display:none;
+}
+.feedback-correct { background:rgba(42,138,42,.3); border:1px solid var(--bring-green); color:#aaffaa; }
+.feedback-wrong   { background:rgba(192,32,30,.3); border:1px solid var(--bring-red); color:#ffaaaa; }
+.feedback-solved  { background:rgba(224,160,32,.2); border:1px solid var(--gold); color:var(--gold); }
+
+/* PHOTO */
+.photo-card { background:rgba(224,160,32,.08); border:1px solid rgba(224,160,32,.3); }
+.photo-text { font-size:14px; line-height:1.55; }
+.photo-btn-row { display:flex; gap:10px; margin-top:14px; }
+.photo-btn {
+  flex:1; padding:12px; border-radius:12px; border:none;
+  font-size:13px; font-weight:800; font-family:'Nunito'; cursor:pointer;
+  transition:all .15s;
+}
+.photo-btn:active { transform:scale(.96); }
+.photo-take { background:var(--gold); color:var(--bring-black); }
+.photo-done { background:rgba(42,138,42,.3); border:1px solid var(--bring-green); color:#aaffaa; }
+.photo-done.confirmed { background:rgba(42,138,42,.6); }
+
+/* ── ADMIN PIN MODAL ── */
+.admin-modal-bg {
+  position:fixed; inset:0; background:rgba(0,0,0,.75);
+  display:flex; align-items:center; justify-content:center;
+  z-index:800; padding:24px;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.admin-modal-bg.show { opacity:1; pointer-events:all; }
+.admin-modal {
+  background:#1a1a2e; border:2px solid var(--gold);
+  border-radius:20px; padding:28px 24px; width:100%; max-width:360px;
+  text-align:center;
+}
+.admin-modal-title { font-family:'Bebas Neue'; font-size:26px; color:var(--gold); letter-spacing:2px; margin-bottom:6px; }
+.admin-modal-sub { font-size:13px; opacity:.65; margin-bottom:20px; line-height:1.5; }
+.admin-modal-context {
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+  border-radius:10px; padding:10px 14px; margin-bottom:16px;
+  font-size:13px; text-align:left;
+}
+.admin-modal-context b { color:var(--gold); }
+.admin-pin-input {
+  width:100%; padding:14px; background:rgba(255,255,255,.08);
+  border:2px solid rgba(255,255,255,.2); border-radius:12px;
+  color:#fff; font-size:28px; font-weight:900; text-align:center;
+  letter-spacing:8px; font-family:'Bebas Neue'; outline:none; margin-bottom:6px;
+}
+.admin-pin-input:focus { border-color:var(--gold); }
+.admin-error { color:#ff8888; font-size:13px; min-height:18px; margin-bottom:10px; }
+.admin-btn-row { display:flex; gap:10px; margin-top:4px; }
+
+/* Override badge on riddle */
+.override-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(224,160,32,.15); border:1px solid rgba(224,160,32,.4);
+  border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700;
+  color:var(--gold); cursor:pointer; margin-top:10px;
+  transition:background .15s;
+}
+.override-badge:hover { background:rgba(224,160,32,.25); }
+
+/* POINTS POPUP */
+.points-popup {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0);
+  background:var(--gold); color:var(--bring-black);
+  border-radius:20px; padding:30px 50px;
+  text-align:center; z-index:1000;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;
+}
+.points-popup.show { transform:translate(-50%,-50%) scale(1); }
+.points-big { font-family:'Bebas Neue'; font-size:72px; line-height:1; }
+.points-label { font-size:16px; font-weight:800; opacity:.8; }
+
+/* ── FINALE SCREEN (Rebus) ── */
+.rebus-container {
+  background:rgba(224,160,32,.06);
+  border:2px solid rgba(224,160,32,.3);
+  border-radius:var(--radius);
+  padding:20px;
+  margin-bottom:16px;
+}
+.rebus-title { font-family:'Bebas Neue'; font-size:28px; letter-spacing:2px; color:var(--gold); margin-bottom:6px; }
+.rebus-subtitle { font-size:13px; opacity:.7; margin-bottom:20px; }
+.rebus-grid {
+  display:grid;
+  grid-template-columns:1fr;
+  gap:14px;
+}
+.rebus-clue {
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;
+  padding:14px 16px;
+  display:flex; align-items:flex-start; gap:14px;
+}
+.rebus-num {
+  width:32px; height:32px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:900; font-size:15px; flex-shrink:0;
+}
+.rebus-clue-text { font-size:13px; line-height:1.5; }
+.rebus-clue-title { font-weight:800; font-size:14px; margin-bottom:4px; }
+.rebus-arrow {
+  text-align:center; font-size:24px; padding:8px 0;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  color:rgba(255,255,255,.3);
+}
+.match-table { width:100%; border-collapse:collapse; margin:16px 0; }
+.match-table th {
+  background:rgba(224,160,32,.2); color:var(--gold);
+  padding:10px 8px; font-size:12px; font-weight:800; letter-spacing:1px; text-align:left;
+  border-bottom:2px solid rgba(224,160,32,.3);
+}
+.match-table td {
+  padding:10px 8px; font-size:13px; border-bottom:1px solid rgba(255,255,255,.06);
+  vertical-align:top;
+}
+.match-table td:first-child { font-weight:800; color:rgba(255,255,255,.8); white-space:nowrap; }
+.match-select {
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.2);
+  border-radius:8px; color:#fff; padding:8px; font-size:12px;
+  font-family:'Nunito'; width:100%; outline:none;
+}
+.match-select option { background:#1a1a2e; color:#fff; }
+
+/* ── LEADERBOARD ── */
+.leaderboard { display:flex; flex-direction:column; gap:12px; }
+.lb-row {
+  border-radius:var(--radius);
+  padding:16px 20px;
+  display:flex; align-items:center; gap:14px;
+}
+.lb-1 { background:linear-gradient(135deg,rgba(224,160,32,.3),rgba(224,160,32,.1)); border:2px solid var(--gold); }
+.lb-2 { background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.3); }
+.lb-3 { background:rgba(192,32,30,.1); border:2px solid rgba(192,32,30,.4); }
+.lb-pos { font-family:'Bebas Neue'; font-size:32px; width:40px; text-align:center; }
+.lb-info { flex:1; }
+.lb-name { font-size:18px; font-weight:900; }
+.lb-detail { font-size:12px; opacity:.6; margin-top:2px; }
+.lb-pts { font-family:'Bebas Neue'; font-size:30px; color:var(--gold); }
+
+/* ── NAV BAR ── */
+.nav-bar {
+  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+  width:100%; max-width:480px;
+  background:rgba(10,10,20,.95);
+  backdrop-filter:blur(20px);
+  border-top:1px solid rgba(255,255,255,.1);
+  display:none;
+  padding:8px 4px 20px;
+  z-index:200;
+}
+.nav-bar.visible { display:flex; }
+.nav-item {
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:6px; cursor:pointer; border-radius:12px; transition:all .15s;
+}
+.nav-item:active { background:rgba(255,255,255,.08); }
+.nav-icon { font-size:22px; }
+.nav-label { font-size:10px; font-weight:700; opacity:.6; letter-spacing:.5px; text-transform:uppercase; }
+.nav-item.active .nav-icon { filter:drop-shadow(0 0 6px currentColor); }
+.nav-item.active .nav-label { opacity:1; }
+
+/* ── TIMER ── */
+.timer-wrap {
+  background:rgba(192,32,30,.15); border:1px solid rgba(192,32,30,.4);
+  border-radius:12px; padding:12px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:14px;
+}
+.timer-label { font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; opacity:.7; }
+.timer-value { font-family:'Bebas Neue'; font-size:28px; color:var(--bring-red); }
+
+/* ── UNLOCK ANIMATION ── */
+.unlock-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.85);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:500; opacity:0; pointer-events:none; transition:opacity .3s;
+  text-align:center; padding:40px;
+}
+.unlock-overlay.show { opacity:1; pointer-events:all; }
+.unlock-icon { font-size:80px; animation:bounce 1s ease infinite alternate; }
+@keyframes bounce { from{transform:scale(1)} to{transform:scale(1.1)} }
+.unlock-title { font-family:'Bebas Neue'; font-size:42px; margin:16px 0 8px; }
+.unlock-sub { font-size:16px; opacity:.8; margin-bottom:30px; }
+
+/* ── PROXIMITY INDICATOR ── */
+.proximity-wrap { margin-bottom:14px; }
+.proximity-bar { height:8px; background:rgba(255,255,255,.1); border-radius:4px; overflow:hidden; }
+.proximity-fill { height:100%; border-radius:4px; transition:width .5s ease, background .5s; }
+.proximity-label { font-size:12px; opacity:.6; margin-top:6px; text-align:center; }
+
+/* ── MISC ── */
+.divider { height:1px; background:rgba(255,255,255,.08); margin:16px 0; }
+.text-gold { color:var(--gold); }
+.text-red { color:var(--bring-red); }
+.text-green { color:var(--bring-green); }
+.text-blue { color:#6699ff; }
+.tag { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+.tag-it { background:rgba(192,32,30,.3); color:#ff8888; }
+.tag-en { background:rgba(26,60,143,.4); color:#88aaff; }
+
+.empty-state { text-align:center; padding:40px 20px; opacity:.5; }
+.empty-icon { font-size:48px; margin-bottom:12px; }
+.empty-text { font-size:15px; }
+
+.geo-status {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 14px; border-radius:10px;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  font-size:13px; margin-bottom:14px;
+}
+.geo-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.geo-dot.active { background:var(--bring-green); animation:pulse 2s infinite; }
+.geo-dot.inactive { background:var(--bring-red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.points-history { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+.ph-row { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:rgba(255,255,255,.04); border-radius:8px; font-size:13px; }
+.ph-pts { font-weight:900; color:var(--gold); }
+
+.progress-dots { display:flex; gap:6px; margin:12px 0; }
+.dot { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.15); transition:background .3s; }
+.dot.done { background:var(--bring-green); }
+.dot.active { background:var(--gold); }
+
+.swipe-hint { text-align:center; font-size:12px; opacity:.4; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+<!-- ══════════════════════════════════════════
+     SCREEN 1: LOGIN
+══════════════════════════════════════════ -->
+<div class="screen active" id="screen-login">
+  <div class="login-hero">
+    <!-- br-ing logo recreated from brand colours -->
+    <svg viewBox="0 0 220 56" width="160" style="display:block;margin:0 auto 4px" xmlns="http://www.w3.org/2000/svg">
+      <!-- b -->
+      <rect x="0"  y="0" width="36" height="36" rx="8" fill="#1a3c8f"/>
+      <text x="18" y="27" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="22" font-weight="900" fill="white">b</text>
+      <!-- r -->
+      <rect x="40" y="0" width="36" height="36" rx="8" fill="#c0201e"/>
+      <text x="58" y="27" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="22" font-weight="900" fill="white">r</text>
+      <!-- dash -->
+      <rect x="80" y="15" width="16" height="6" rx="3" fill="#1a3c8f"/>
+      <!-- i -->
+      <rect x="100" y="0" width="36" height="36" rx="8" fill="#2a8a2a"/>
+      <text x="118" y="27" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="22" font-weight="900" fill="white">i</text>
+      <!-- n -->
+      <rect x="140" y="0" width="36" height="36" rx="8" fill="#c0201e"/>
+      <text x="158" y="27" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="22" font-weight="900" fill="white">n</text>
+      <!-- g -->
+      <rect x="180" y="0" width="36" height="36" rx="8" fill="#1a3c8f"/>
+      <text x="198" y="27" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="22" font-weight="900" fill="white">g</text>
+      <!-- subtitle -->
+      <text x="110" y="52" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" fill="rgba(255,255,255,0.45)" letter-spacing="3">SCUOLA BILINGUE</text>
+    </svg>
+    <div class="colosseo-icon">🏛️</div>
+    <div class="login-title">CACCIA<br>AL TESORO</div>
+    <div class="login-subtitle">Roma · 14 Maggio 2026</div>
+  </div>
+
+  <div class="pin-section">
+    <div class="pin-label">Seleziona il tuo gruppo</div>
+    <div class="group-cards">
+      <div class="group-card gc-A" onclick="selectGroup('A')">
+        <div class="gc-emoji">🔴</div>
+        <div class="gc-info">
+          <div class="gc-name">Gruppo A</div>
+          <div class="gc-theme">Arte → Storia → Curiosità Moderne</div>
+        </div>
+        <div id="sel-A" style="font-size:20px;display:none">✓</div>
+      </div>
+      <div class="group-card gc-B" onclick="selectGroup('B')">
+        <div class="gc-emoji">🔵</div>
+        <div class="gc-info">
+          <div class="gc-name">Gruppo B</div>
+          <div class="gc-theme">Storia → Curiosità Moderne → Arte</div>
+        </div>
+        <div id="sel-B" style="font-size:20px;display:none">✓</div>
+      </div>
+      <div class="group-card gc-C" onclick="selectGroup('C')">
+        <div class="gc-emoji">🟡</div>
+        <div class="gc-info">
+          <div class="gc-name">Gruppo C</div>
+          <div class="gc-theme">Curiosità Moderne → Arte → Storia</div>
+        </div>
+        <div id="sel-C" style="font-size:20px;display:none">✓</div>
+      </div>
+    </div>
+
+    <div class="pin-input-wrap">
+      <div class="pin-label" style="margin-bottom:8px">Inserisci il PIN del gruppo</div>
+      <input type="password" inputmode="numeric" class="pin-input" id="pin-input" placeholder="• • • •" maxlength="4">
+      <div id="pin-error" style="color:#ff8888;text-align:center;font-size:13px;margin-top:8px;display:none">PIN errato. Riprova.</div>
+      <button class="btn btn-primary" onclick="doLogin()">ENTRA → START</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN 2: MAP / NAVIGATION
+══════════════════════════════════════════ -->
+<div class="screen" id="screen-map">
+  <div class="header" id="map-header">
+    <div>
+      <div class="header-logo">🏛️ br-ing · ROMA</div>
+      <div class="header-sub">Caccia al Tesoro 2026</div>
+    </div>
+    <div id="map-group-badge" class="header-badge">GRP A</div>
+    <div class="score-pill" id="map-score">0 pts</div>
+  </div>
+
+  <div class="content">
+    <div class="geo-status">
+      <div class="geo-dot active" id="geo-dot"></div>
+      <span id="geo-text">Ricerca posizione GPS...</span>
+    </div>
+
+    <div class="progress-dots" id="progress-dots">
+      <div class="dot active" data-stop="0"></div>
+      <div class="dot" data-stop="1"></div>
+      <div class="dot" data-stop="2"></div>
+      <div class="dot" data-stop="3"></div>
+    </div>
+
+    <div class="map-wrap">
+      <div id="map" style="width:100%;height:100%"></div>
+      <div class="map-overlay">
+        <div style="font-size:12px;opacity:.7" id="coords-display">In attesa del GPS...</div>
+      </div>
+    </div>
+
+    <div class="stop-list" id="stop-list"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN 3: TAPPA
+══════════════════════════════════════════ -->
+<div class="screen" id="screen-tappa">
+  <div class="header" id="tappa-header">
+    <div>
+      <div class="header-logo" id="tappa-header-name">COLOSSEO</div>
+      <div class="header-sub" id="tappa-header-tema">Arte</div>
+    </div>
+    <div id="tappa-group-badge" class="header-badge">GRP A</div>
+    <div class="score-pill" id="tappa-score">0 pts</div>
+  </div>
+
+  <div class="content" id="tappa-content">
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN 4: FINALE (Rebus + Logic Puzzle)
+══════════════════════════════════════════ -->
+<div class="screen" id="screen-finale">
+  <div class="header" style="border-color:var(--gold)">
+    <div>
+      <div class="header-logo">🧩 MEGA SFIDA</div>
+      <div class="header-sub">Villa Borghese · Finale</div>
+    </div>
+    <div class="score-pill" id="finale-score">0 pts</div>
+  </div>
+
+  <div class="content">
+    <div class="rebus-container">
+      <div class="rebus-title">IL CASO DEGLI IMPERATORI</div>
+      <div class="rebus-subtitle">Abbina ogni imperatore al suo oggetto e al luogo. 15 minuti — no Google — no adulti.</div>
+
+      <div id="finale-timer" class="timer-wrap" style="display:none">
+        <div class="timer-label">⏱️ Tempo rimasto</div>
+        <div class="timer-value" id="timer-display">15:00</div>
+      </div>
+
+      <div id="finale-start-btn">
+        <button class="btn btn-primary" onclick="startFinale()">🚀 INIZIA LA SFIDA FINALE</button>
+      </div>
+
+      <div id="finale-puzzle" style="display:none">
+        <!-- REBUS VISIVO -->
+        <div style="margin-bottom:20px">
+          <div class="section-title"><span class="section-title-icon">🔍</span> GLI INDIZI</div>
+
+          <div class="rebus-clue" style="background:rgba(192,32,30,.1);border-color:rgba(192,32,30,.3);margin-bottom:10px">
+            <div class="rebus-num" style="background:var(--bring-red);color:#fff">1</div>
+            <div class="rebus-clue-text">
+              <div class="rebus-clue-title">🏟️ Colosseo</div>
+              L'imperatore che ha commissionato il <b>sistema di trappole e botole</b> sotto l'arena ha anche organizzato <b>100 giorni</b> di festeggiamenti inaugurali.
+            </div>
+          </div>
+
+          <div class="rebus-clue" style="background:rgba(26,60,143,.1);border-color:rgba(26,60,143,.3);margin-bottom:10px">
+            <div class="rebus-num" style="background:var(--bring-blue);color:#fff">2</div>
+            <div class="rebus-clue-text">
+              <div class="rebus-clue-title">⛩️ Pantheon</div>
+              L'imperatore che ha lasciato l'<b>iscrizione falsa</b> ha costruito l'edificio, ma ha scelto di non mettere il suo nome. Ha messo quello di un altro.
+            </div>
+          </div>
+
+          <div class="rebus-clue" style="background:rgba(42,138,42,.1);border-color:rgba(42,138,42,.3);margin-bottom:10px">
+            <div class="rebus-num" style="background:var(--bring-green);color:#fff">3</div>
+            <div class="rebus-clue-text">
+              <div class="rebus-clue-title">🏺 Mausoleo di Augusto</div>
+              I <b>due obelischi</b> appartengono all'imperatore che li portò come trofei di guerra dall'Egitto. Quello stesso imperatore è sepolto in questo luogo.
+            </div>
+          </div>
+
+          <div class="rebus-clue" style="background:rgba(224,160,32,.08);border-color:rgba(224,160,32,.25);margin-bottom:10px">
+            <div class="rebus-num" style="background:var(--gold);color:#000">4</div>
+            <div class="rebus-clue-text">
+              <div class="rebus-clue-title">💨 Nessun luogo visitato</div>
+              La <b>statua colossale</b> apparteneva all'imperatore il cui oggetto non si trova più in nessuno dei luoghi visitati oggi — è scomparso, ma ha lasciato il suo soprannome a un edificio vicino.
+            </div>
+          </div>
+
+          <div class="rebus-clue" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12);margin-bottom:4px">
+            <div class="rebus-num" style="background:rgba(255,255,255,.2);color:#fff">5</div>
+            <div class="rebus-clue-text">
+              <div class="rebus-clue-title">🧩 Per deduzione</div>
+              Il quinto imperatore — quello rimasto — non ha lasciato nessun oggetto specifico nei luoghi visitati oggi. È famoso per i mercati e il suo Foro. Deduci chi è per esclusione.
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- MATCH TABLE -->
+        <div class="section-title" style="margin-top:16px"><span class="section-title-icon">📋</span> COMPILA LA TABELLA</div>
+        <div style="font-size:13px;opacity:.7;margin-bottom:14px">Seleziona l'oggetto e il luogo per ciascun imperatore:</div>
+
+        <table class="match-table" id="match-table">
+          <thead>
+            <tr>
+              <th>Imperatore</th>
+              <th>Oggetto</th>
+              <th>Luogo</th>
+            </tr>
+          </thead>
+          <tbody id="match-tbody"></tbody>
+        </table>
+
+        <button class="btn btn-primary" onclick="submitFinale()" style="margin-top:8px">✅ INVIA LE MIE RISPOSTE</button>
+      </div>
+
+      <div id="finale-result" style="display:none">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN 5: LEADERBOARD
+══════════════════════════════════════════ -->
+<div class="screen" id="screen-rank">
+  <div class="header" style="border-color:var(--gold)">
+    <div>
+      <div class="header-logo">🏆 CLASSIFICA</div>
+      <div class="header-sub">Punteggi in tempo reale</div>
+    </div>
+  </div>
+  <div class="content">
+    <div id="rank-content"></div>
+  </div>
+</div>
+
+<!-- NAV BAR -->
+<div class="nav-bar" id="nav-bar">
+  <div class="nav-item active" onclick="showScreen('map','nav-map')">
+    <div class="nav-icon">🗺️</div>
+    <div class="nav-label">Mappa</div>
+  </div>
+  <div class="nav-item" onclick="showScreen('tappa','nav-tappa')" id="nav-tappa-btn">
+    <div class="nav-icon">📍</div>
+    <div class="nav-label">Tappa</div>
+  </div>
+  <div class="nav-item" id="nav-finale-btn" onclick="tryShowFinale()">
+    <div class="nav-icon">🧩</div>
+    <div class="nav-label" id="nav-finale-label">Finale 🔒</div>
+  </div>
+  <div class="nav-item" onclick="showScreen('rank','nav-rank'); buildLeaderboard()">
+    <div class="nav-icon">🏆</div>
+    <div class="nav-label">Rank</div>
+  </div>
+</div>
+
+<!-- ADMIN PIN MODAL -->
+<div class="admin-modal-bg" id="admin-modal-bg">
+  <div class="admin-modal">
+    <div class="admin-modal-title">🔐 PIN ACCOMPAGNATORE</div>
+    <div class="admin-modal-sub" id="admin-modal-sub">Inserisci il PIN per confermare</div>
+    <div class="admin-modal-context" id="admin-modal-context"></div>
+    <input type="password" inputmode="numeric" class="admin-pin-input" id="admin-pin-input" placeholder="• • • •" maxlength="4">
+    <div class="admin-error" id="admin-error"></div>
+    <div class="admin-btn-row">
+      <button class="btn btn-secondary" style="flex:1;margin-top:0" onclick="closeAdminModal()">Annulla</button>
+      <button class="btn btn-primary" style="flex:1;margin-top:0" onclick="submitAdminPin()">✓ Conferma</button>
+    </div>
+  </div>
+</div>
+
+<!-- POINTS POPUP -->
+<div class="points-popup" id="points-popup">
+  <div class="points-big" id="popup-pts">+10</div>
+  <div class="points-label" id="popup-label">PUNTI!</div>
+</div>
+
+<!-- UNLOCK OVERLAY -->
+<div class="unlock-overlay" id="unlock-overlay">
+  <div class="unlock-icon" id="unlock-icon">📍</div>
+  <div class="unlock-title" id="unlock-title">TAPPA SBLOCCATA!</div>
+  <div class="unlock-sub" id="unlock-sub">Sei arrivato al Colosseo</div>
+  <button class="btn btn-primary" style="max-width:280px" onclick="closeUnlock()">INIZIA LA TAPPA →</button>
+</div>
+
+<!-- PHOTO PREVIEW MODAL -->
+<div class="admin-modal-bg" id="photo-preview-bg" style="z-index:850">
+  <div class="admin-modal" style="max-width:400px">
+    <div class="admin-modal-title" style="margin-bottom:12px">📸 ANTEPRIMA FOTO</div>
+    <div style="border-radius:12px;overflow:hidden;background:#000;margin-bottom:16px;min-height:180px;display:flex;align-items:center;justify-content:center">
+      <img id="photo-preview-img" src="" alt="Foto del gruppo" style="width:100%;max-height:280px;object-fit:contain;display:block">
+    </div>
+    <div style="font-size:13px;opacity:.7;margin-bottom:16px;text-align:center" id="photo-preview-label">Mostra questa foto all'accompagnatore</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-secondary" style="flex:1;margin-top:0" onclick="closePhotoPreview()">Chiudi</button>
+      <button class="btn" style="flex:1;margin-top:0;background:var(--gold);color:#000;font-weight:900" id="photo-approve-btn" onclick="">🔐 Chiedi approvazione</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+// DATA — PINS, STOPS, CONTENT
+// ═══════════════════════════════════════════════════════════
+
+const PINS = { A:'1944', B:'2025', C:'0753' }; // cambiare prima del 14 maggio!
+const ADMIN_PIN = '8080'; // PIN segreto accompagnatori — solo voi lo sapete!
+
+const STOPS = [
+  { id:'colosseo',  name:'Colosseo & Fori', short:'Colosseo', icon:'🏟️', lat:41.8902, lng:12.4922, radiusM:120 },
+  { id:'pantheon',  name:'Pantheon',        short:'Pantheon', icon:'⛩️', lat:41.8986, lng:12.4769, radiusM:100 },
+  { id:'mausoleo',  name:'Mausoleo di Augusto', short:'Mausoleo', icon:'🏺', lat:41.9061, lng:12.4741, radiusM:100 },
+  { id:'borghese',  name:'Villa Borghese — FINALE', short:'Finale 🧩', icon:'🌳', lat:41.9138, lng:12.4921, radiusM:200 },
+];
+
+const THEMES = {
+  A:['Arte','Storia','Curiosità Moderne'],
+  B:['Storia','Curiosità Moderne','Arte'],
+  C:['Curiosità Moderne','Arte','Storia'],
+};
+
+const TEMA_ICONS = { 'Arte':'🎨', 'Storia':'📜', 'Curiosità Moderne':'🌍' };
+
+// ── CONTENT per tappa × gruppo ─────────────────────────────
+const CONTENT = {
+  colosseo: {
+    A: {
+      tema:'Arte',
+      heroColor:'linear-gradient(135deg,#8B0000,#3a0000)',
+      facts:[
+        { lang:'IT', text:'Il Colosseo è un manuale di architettura all\'aperto: i suoi tre livelli mostrano i tre ordini classici sovrapposti — dorico, ionico, corinzio. È una delle pochissime strutture antiche a usarli tutti e tre nella stessa facciata.' },
+        { lang:'EN', text:'The original facade was clad in bright white travertine and marble. What we see today — the grey core — was exposed because for over 1,000 years the Colosseum served as a quarry. Its marble was stripped to build Renaissance churches, including Saint Peter\'s Basilica.' },
+        { lang:'IT', text:'Il sistema di volte e archi non è decorativo: è ingegneristico. Ogni arco convoglia il peso lateralmente. La struttura regge grazie all\'opus caementicium — calcestruzzo romano a base di pozzolana vulcanica dei Campi Flegrei, vicino a voi in Campania.' },
+        { lang:'EN', text:'Visual trick: today the Colosseum looks asymmetrical — one side is dramatically lower. That is not decay. In the Middle Ages the Frangipane family converted it into a fortress and demolished an entire outer ring on one side for building material.' },
+      ],
+      riddle:{
+        text:['Tre fratelli, vestiti in modo diverso, si reggono sulle spalle l\'uno dell\'altro per sostenere una casa.','Il più anziano porta un cappello rotondo e liscio, con una cintura semplice.','Il fratello di mezzo ha delle volute che si arricciano alle spalle.','Il più giovane è il più elegante: il suo cappello trabocca di foglie scolpite.','','Come si chiamano? E riesci a trovare tutti e tre, proprio adesso, su questo muro davanti a te?'],
+        hint:'Non cercare persone — cerca le colonne. Un ordine per piano.',
+        answer:['dorico ionico corinzio','dorico, ionico, corinzio','ionico dorico corinzio','ordini architettonici'],
+        solution:'Dorico (piano terra), Ionico (secondo piano), Corinzio (terzo piano) — i tre ordini architettonici classici, sovrapposti sulla facciata.',
+      },
+      photo:'The Colosseum was originally white and gleaming. Today it is grey and scarred. Take a "before and after" group photo: half the group poses elegant and luminous (the original), the other half in full "ancient ruin" mode — crumbling, dramatic, defeated. Same pose, split personality.',
+    },
+    B: {
+      tema:'Storia',
+      heroColor:'linear-gradient(135deg,#1a3c8f,#0a1a40)',
+      facts:[
+        { lang:'IT', text:'I festeggiamenti per l\'inaugurazione del Colosseo nell\'80 d.C. durarono 100 giorni consecutivi con 9.000 animali uccisi. Ma c\'è di più: l\'imperatore Tito fece anche allagare l\'arena per simulare battaglie navali — le naumachie. Dentro al Colosseo. Con vere navi.' },
+        { lang:'EN', text:'Not all gladiators were slaves condemned to death. Some were free men — professional athletes who chose this career for fame and money. They had personal doctors, a carbohydrate-heavy diet (they were nicknamed \'hordearii\', barley-eaters), and genuine fan clubs.' },
+        { lang:'IT', text:'Sotto l\'arena c\'era l\'ipogeo: 32 trappole azionate da contrappesi e argani di legno, gestite da squadre di schiavi sincronizzate. In pochi secondi potevano far apparire leoni, elefanti o intere scenografie — come gli effetti speciali di un kolossal, ma con lavoratori reali sotto il palco.' },
+        { lang:'EN', text:'The last gladiatorial combat took place in 404 AD. After that, the Colosseum became a cemetery, then a church, then housing for poor families, and finally a quarry. The iron clamps that held the marble blocks together were extracted one by one, leaving thousands of holes — that pockmarked surface you see today.' },
+      ],
+      riddle:{
+        text:['Vengo inaugurato per celebrare una vittoria. Duro 100 giorni. Posso contenere 50.000 persone.','Ma sono costruito su una menzogna: chi mi ha fatto costruire non ha usato i propri soldi — ha usato il tesoro di un popolo che aveva distrutto.','Ha usato quell\'oro per intrattenere il suo nuovo popolo, così che dimenticasse di fare domande.','','Chi sono? Non l\'edificio — la strategia. Come si chiama questa tecnica politica, e qual è la famosa frase latina che la descrive?'],
+        hint:'Pensa a pane e a qualcos\'altro. I Romani avevano un\'espressione precisa per questo.',
+        answer:['panem et circenses','pane e circenses','pane e circo','panem circenses'],
+        solution:'Panem et circenses — "pane e circo". La strategia politica di distrarre il popolo con cibo e intrattenimento, anziché governarlo. Coniata dal poeta Giovenale per criticare il potere imperiale.',
+      },
+      photo:'Under the arena floor there was an entire underground world of trapdoors, pulleys and cages. Find a spot where you can see down into the Colosseum\'s interior. Take a photo where half the group stands tall above (the crowd in the stands), and the other half crouches below (the animals waiting in the dark). Most inventive use of levels wins.',
+    },
+    C: {
+      tema:'Curiosità Moderne',
+      heroColor:'linear-gradient(135deg,#9A6F00,#3a2a00)',
+      facts:[
+        { lang:'IT', text:'Il nome "Colosseo" non è quello originale: si chiamava Amphitheatrum Flavium. Il soprannome deriva da una statua colossale di 35 metri di Nerone accanto all\'edificio, ispirata al Colosso di Rodi — una delle Sette Meraviglie del Mondo Antico. La statua è sparita. Il nome è rimasto.' },
+        { lang:'EN', text:'The Colosseum earns over 50 million euros per year in tickets — more than 7 million visitors annually. It is one of the most photographed structures on Earth and appears on the cover of more travel guides than any other monument in the world.' },
+        { lang:'IT', text:'Nel 2021 ricercatori dell\'Università di Salisburgo hanno ricreato il soundscape del Colosseo in 3D, simulando 50.000 spettatori che urlano. Risultato: era impossibile sentire qualcosa a più di 10 metri. I gladiatori combattevano immersi in un muro di rumore.' },
+        { lang:'EN', text:'The Colosseum\'s elliptical shape was not accidental — it maximises sightlines for every single seat. This same geometry is still used today in every major professional sports stadium on the planet, from Wembley to the SoFi Stadium in Los Angeles.' },
+      ],
+      riddle:{
+        text:['Nasce da una tragedia, cresce nell\'oblio, e oggi vive di fama altrui.','Il mio vero nome appartiene a una famiglia di imperatori che non esiste più.','Il mio soprannome appartiene a un gigante che non esiste più.','Sono gratuito da fuori, a pagamento da dentro, e guadagno più di una squadra di calcio di Serie A.','','Chi sono? E perché il nome con cui tutti mi chiamano non ha nulla a che fare con me?'],
+        hint:'Pensa a Nerone, alla statua accanto a questo edificio, e a una meraviglia del mondo antico.',
+        answer:['colosseo','amphitheatrum flavium','anfiteatro flavio','colosso'],
+        solution:'Il Colosseo — il cui nome ufficiale era Amphitheatrum Flavium. Il soprannome "Colosseo" deriva dal Colosso di Nerone, una statua di 35 m che si trovava accanto. La statua è scomparsa, ma il soprannome ha sopravvissuto 2.000 anni.',
+      },
+      photo:'The Colosseum was designed so that 50,000 people could evacuate through 80 numbered exits called \'vomitoria\'. Find as many different numbered archways as you can in 3 minutes. Take a group photo in front of the highest number you find — that\'s your score for this challenge.',
+    },
+  },
+
+  pantheon: {
+    A: {
+      tema:'Storia',
+      heroColor:'linear-gradient(135deg,#1a3c8f,#0a1a40)',
+      facts:[
+        { lang:'IT', text:'Il Pantheon che vedi oggi non è quello di Agrippa (27 a.C.). È stato ricostruito dall\'imperatore Adriano tra il 118 e il 128 d.C. Ma Adriano lasciò deliberatamente l\'iscrizione di Agrippa sulla facciata. Una delle grandi menzogne architettoniche della storia.' },
+        { lang:'EN', text:'In 609 AD, Pope Boniface IV transformed the Pantheon into a Christian church dedicated to the Virgin Mary. This single decision saved it: while every other Roman temple was demolished or stripped, the Pantheon was untouchable. Religion as the ultimate preservation strategy.' },
+        { lang:'IT', text:'All\'interno è sepolto Raffaello Sanzio, morto a soli 37 anni nel 1520. La sua tomba porta l\'iscrizione: "Ille hic est Raphael" — "Qui giace Raffaello". È uno dei pochissimi artisti al mondo sepolto all\'interno di un monumento antico romano.' },
+        { lang:'EN', text:'Hadrian was one of Rome\'s great traveller-emperors who personally visited nearly every province of the empire. Historians believe the Pantheon\'s extraordinary proportions — height equals diameter at 43.3 metres — reflect his deep fascination with Greek mathematics and geometry.' },
+      ],
+      riddle:{
+        text:['Il mio volto dice che mi ha costruito un uomo. Le mie ossa dicono un altro.','Ero un tempio di molti dei, poi la casa di un solo Dio. Sono sopravvissuto a tutti gli altri perché ho cambiato fede al momento giusto.','L\'uomo che mi ha davvero costruito non ha mai messo il suo nome su di me.','','Chi ha costruito davvero questo Pantheon? E perché il nome che leggi sulla facciata non è quello del vero costruttore?','','Esci fuori e leggi l\'iscrizione. Quante volte appare il numero III? Cosa ti dice sull\'uomo nominato?'],
+        hint:'Cerca il nome AGRIPPA sulla facciata. Poi cerca nella storia chi ha DAVVERO costruito questo edificio.',
+        answer:['adriano','adriano ha costruito','hadrian','imperatore adriano'],
+        solution:'L\'imperatore Adriano (118-128 d.C.) ha costruito il Pantheon attuale, ma lasciò sulla facciata l\'iscrizione originale di Agrippa (27 a.C.). Il testo recita "M·AGRIPPA·L·F·COS·TERTIVM·FECIT" — "Marco Agrippa, figlio di Lucio, console per la terza volta, lo costruì." Il III indica che Agrippa era al suo terzo consolato.',
+      },
+      photo:'The inscription on the facade is a famous architectural liar — it credits the wrong man. Find it, photograph the full text, and then have one group member deliver it out loud like a courtroom confession, with maximum drama. The most theatrical performance earns the points.',
+    },
+    B: {
+      tema:'Curiosità Moderne',
+      heroColor:'linear-gradient(135deg,#9A6F00,#3a2a00)',
+      facts:[
+        { lang:'IT', text:'La cupola del Pantheon (diametro 43,3 m) è ancora oggi la più grande cupola in calcestruzzo non armato mai costruita. Ha detenuto il record mondiale per oltre 1.300 anni — fino alla cupola del Brunelleschi a Firenze nel 1436.' },
+        { lang:'EN', text:'The secret lies in pozzolana: a volcanic ash from the Campi Flegrei — very close to your school in Campania — which, when mixed with seawater, creates a material that becomes stronger over time, not weaker. The Romans accidentally invented a form of self-healing concrete that modern science is still studying.' },
+        { lang:'IT', text:'L\'oculus — il foro circolare in cima, diametro 8,7 m — non ha vetro. Quando piove, l\'acqua entra. Ma il pavimento ha una leggera inclinazione verso il centro, dove si trovano 22 fori di drenaggio nascosti nel marmo, progettati quasi 2.000 anni fa e ancora funzionanti.' },
+        { lang:'EN', text:'The Pantheon\'s interior proportions are mathematically perfect: if you drew a sphere inside the dome, it would touch the floor exactly. Interior height equals dome diameter — both 43.3 metres. This harmonic proportion is still used as a reference in architecture schools worldwide.' },
+      ],
+      riddle:{
+        text:['Ho una bocca in cima ma non parlo mai. Quando fuori piove, dovrei allagarmi — ma non lo faccio.','Il mio pavimento si inclina verso un segreto che custodisce da 2.000 anni. Ventidue bocche invisibili bevono quello che cade attraverso il mio unico occhio aperto.','Sono perfettamente rotondo, perfettamente proporzionato. Una sfera entrerebbe dentro di me esattamente.','','Descrivi in massimo tre frasi il sistema che impedisce al Pantheon di allagarsi — con parole tue.'],
+        hint:'Guarda il pavimento: riesci a percepire la leggera inclinazione verso il centro? Dove va l\'acqua?',
+        answer:['drenaggio','fori drenaggio','22 fori','inclinazione pavimento','scolo','drena'],
+        solution:'Il pavimento del Pantheon ha una leggera inclinazione verso il centro dove si trovano 22 piccoli fori di drenaggio nascosti nel marmo. Quando piove, l\'acqua che entra dall\'oculus scorre verso questi scarichi e defluisce nel sistema fognario romano sottostante, ancora funzionante.',
+      },
+      photo:'Find the beam of light coming through the oculus and position your whole group so the light touches at least one person in the shot. The light is a character in this scene — treat it that way. The most cinematic, intentional composition wins the full points.',
+    },
+    C: {
+      tema:'Arte',
+      heroColor:'linear-gradient(135deg,#8B0000,#3a0000)',
+      facts:[
+        { lang:'IT', text:'Il nome "Pantheon" viene dal greco: pan (tutto) + theos (dio). Era dedicato ai 7 dei planetari — uno per ogni corpo celeste visibile a occhio nudo: Sole, Luna, Mercurio, Venere, Marte, Giove, Saturno. Le 7 nicchie nelle pareti corrispondono a questi 7 dei.' },
+        { lang:'EN', text:'The columns of the facade are monolithic blocks of grey Egyptian granite — each one weighs approximately 60 tonnes. They were transported from quarries in Egypt, floated on rafts down the Nile, shipped across the Mediterranean, and dragged on wooden rollers from the port of Ostia to this exact spot. No machines. Only ropes, levers, and thousands of workers.' },
+        { lang:'IT', text:'Il pavimento originale romano che state calpestando è ancora quello del II secolo d.C. — quasi 2.000 anni fa. Segue uno schema geometrico di cerchi, quadrati e rettangoli in marmo colorato che rispecchia la geometria della cupola sopra, come se il cielo e la terra si rispecchiassero l\'uno nell\'altro.' },
+        { lang:'EN', text:'Every year on April 21st — Rome\'s traditional birthday — the oculus aligns perfectly with the sun at noon. The beam of light strikes the main entrance threshold like a spotlight. This was designed as an architectural solar calendar, marking the city\'s most sacred date with precision that still works after 1,900 years.' },
+      ],
+      riddle:{
+        text:['Sette dei vivono nelle mie pareti, uno per ogni luce errante nel cielo antico.','Il mio pavimento rispecchia il mio soffitto. Ciò che è in alto è in basso. Un cerchio risponde a un cerchio.','Ogni anno, in un giorno preciso, un occhio di luce punta esattamente verso la porta — un orologio senza lancette, un calendario senza numeri.','','Quanti sono i dei di cui parlo? Fai i loro nomi — non quelli greci, ma i loro nomi moderni che usi ancora ogni settimana.'],
+        hint:'Guarda il tuo calendario. Sette nomi, sette giorni. Si sono nascosti in bella vista per tutta la tua vita.',
+        answer:['lunedi martedi mercoledi giovedi venerdi sabato domenica','lunes martes','sette giorni','7 giorni','sole luna marte mercurio giove venere saturno','sun moon mars mercury jupiter venus saturn'],
+        solution:'I sette dei corrispondono ai sette giorni della settimana: Sole→Domenica, Luna→Lunedì, Marte→Martedì, Mercurio→Mercoledì, Giove→Giovedì, Venere→Venerdì, Saturno→Sabato. I nomi dei giorni che usiamo ogni giorno sono nomi di divinità romane/planetarie!',
+      },
+      photo:'The Pantheon floor mirrors the dome — same geometry, up and down. Take a creative photo that captures this symmetry: someone looks down at the floor, someone looks up at the dome, in the same frame. The image should feel like a mirror. Perfect symmetry wins full points.',
+    },
+  },
+
+  mausoleo: {
+    A: {
+      tema:'Curiosità Moderne',
+      heroColor:'linear-gradient(135deg,#9A6F00,#3a2a00)',
+      facts:[
+        { lang:'IT', text:'Il Mausoleo di Augusto ha avuto più vite di qualsiasi altro edificio di Roma: tomba imperiale → fortezza medievale dei Colonna → giardino pensile rinascimentale → arena per le corride nel 1700 → sala concerti "Augusteo" dal 1908 (3.500 posti, orchestre da tutta Europa) → demolito da Mussolini nel 1936 → restaurato e riaperto nel 2021.' },
+        { lang:'EN', text:'The "Augusteo" concert hall was one of the most important music venues in Europe. Arturo Toscanini conducted there. The works of Brahms, Mahler and Richard Strauss were performed within these walls. Mussolini had it demolished to "restore ancient Rome" — in reality, to build a monumental Fascist piazza.' },
+        { lang:'IT', text:'Il restauro concluso nel 2021 è costato circa 10 milioni di euro, finanziato in parte da aziende private tra cui TIM. Questo modello si chiama "Art Bonus" ed è oggi una pratica diffusa in tutta Italia.' },
+        { lang:'EN', text:'The word "mausoleum" comes from King Mausolus of Halicarnassus — in modern-day Turkey — whose enormous tomb was one of the Seven Wonders of the Ancient World. Augustus directly modelled his design on that monument.' },
+      ],
+      riddle:{
+        text:['Ero una tomba. Poi un castello. Poi un giardino. Poi un\'arena per i tori. Poi una sala da concerti. Poi macerie. Poi una rovina. Adesso sono aperto di nuovo.','Un direttore d\'orchestra ha alzato la bacchetta dove un tempo giacevano gli imperatori. Un dittatore lo ha cancellato per fare spazio alla sua idea di grandezza.','Sono morto più volte dell\'uomo sepolto dentro di me.','','Elenca in ordine cronologico almeno 5 usi diversi che ha avuto questo edificio nel corso della storia.'],
+        hint:'Cerca nell\'ordine: tomba → fortezza → giardino → arena → teatro → demolizione → restauro.',
+        answer:['tomba fortezza giardino arena concerti','tomba castello giardino','5 usi','cinque usi','tomba arena teatro','sepolcro fortezza'],
+        solution:'Ordine cronologico: 1) Tomba imperiale (28 a.C.-III sec.); 2) Fortezza medievale dei Colonna; 3) Giardino pensile rinascimentale; 4) Arena per i tori (1700s); 5) Sala concerti Augusteo (1908-1936); 6) Demolita da Mussolini (1936); 7) Restaurata e riaperta (2021).',
+      },
+      photo:'The Mausoleum has lived through more eras than almost any other building on Earth. Each group member becomes one of its historical incarnations: the gladiator (bull-ring era), the musician (concert hall era), the medieval soldier (fortress era), the gardener (hanging garden era). Group photo: everyone fully in character, same location.',
+    },
+    B: {
+      tema:'Arte',
+      heroColor:'linear-gradient(135deg,#8B0000,#3a0000)',
+      facts:[
+        { lang:'IT', text:'Il Mausoleo si ispirava architettonicamente ai tumuli etruschi — tombe a collinetta della civiltà che precedeva Roma in questa terra. Augusto prendeva una forma locale e la ingrandiva a scala imperiale: diametro 87 m, altezza 44 m, cipressi sulla sommità e probabilmente una statua dorata di sé stesso al vertice.' },
+        { lang:'EN', text:'At the entrance stood two Egyptian obelisks — trophies from the conquest of Egypt. Today one is in Piazza dell\'Esquilino, behind Santa Maria Maggiore; the other stands at Piazza del Quirinale, in front of the presidential palace. Augustus used art as propaganda: "I conquered Egypt — look what I brought home."' },
+        { lang:'IT', text:'Nell\'area circostante si trovava l\'Ara Pacis, uno dei capolavori della scultura romana: un altare decorato con fregi che ritraggono Augusto, la sua famiglia e i senatori in processione. È uno dei primissimi esempi di "ritratto di gruppo" nella storia dell\'arte occidentale.' },
+        { lang:'EN', text:'The Ara Pacis is today housed in a museum designed by the American architect Richard Meier, completed in 2006 — all glass, steel and white concrete next to 1st-century BC ruins. The controversy was enormous. Many Romans called it "la scatola di scarpe" — the shoebox. Others called it the most honest building in Rome.' },
+      ],
+      riddle:{
+        text:['Il mio ingresso aveva due aghi rubati al deserto, puntati verso un dio del cielo venerato dal più grande nemico sconfitto dal mio padrone.','Il mio padrone li ha messi qui per dire: ho assorbito il loro potere. Il loro dio è ora il mio.','Un ago si trova ora dietro una chiesa. L\'altro davanti a un palazzo. Entrambi in questa città, a meno di 2 km da dove stai.','','Di cosa si tratta? Da dove vengono originariamente, e dove si trovano oggi i due che stavano qui all\'ingresso?'],
+        hint:'Gli "aghi" sono monoliti di pietra alti decine di metri, con una punta piramidale. Gli Egiziani li chiamavano "dito del sole".',
+        answer:['obelischi','obelisco','obelisks','due obelischi egiziani','quirinale esquilino'],
+        solution:'Si tratta di due obelischi egiziani portati come trofei dall\'Egitto da Augusto. Uno si trova oggi in Piazza dell\'Esquilino (dietro Santa Maria Maggiore), l\'altro in Piazza del Quirinale (davanti al palazzo presidenziale). Erano originariamente eretti in Egitto come simboli del dio Ra, il dio del sole.',
+      },
+      photo:'Augustus brought Egyptian obelisks to Rome as war trophies. Your challenge: find any object near or around the Mausoleum that looks visually "out of place" — from another era, another style, another culture. Photograph it and explain in two sentences why it seems to belong somewhere else. The most observant group wins.',
+    },
+    C: {
+      tema:'Storia',
+      heroColor:'linear-gradient(135deg,#1a3c8f,#0a1a40)',
+      facts:[
+        { lang:'IT', text:'Augusto fu il primo imperatore romano, ma non volle mai essere chiamato "imperatore" o "re" — parole che i romani odiavano dalla cacciata dei re nel 509 a.C. Si fece chiamare "Princeps" (primo cittadino) e "Augustus" (degno di venerazione). Un capolavoro precoce di comunicazione politica.' },
+        { lang:'EN', text:'He built this Mausoleum at age 35, in 28 BC, while still at war. Not because he feared dying soon — but as a deliberate political statement: "my dynasty will last forever." The first person to be buried here was not Augustus himself, but his young nephew Marcellus, who died at just 20 years old. Virgil wrote: "Tu Marcellus eris." The crowd reportedly wept.' },
+        { lang:'IT', text:'Augusto morì a 75 anni nel 14 d.C. Le sue ultime parole: "Ho recitato bene la mia parte? Se sì, applaudite!" Come un attore che saluta il pubblico al termine dello spettacolo. Quella frase dice tutto su come concepiva il potere: come una performance continua.' },
+        { lang:'EN', text:'After Augustus, the Mausoleum held the ashes of successive emperors for over a century — Tiberius, Caligula, Claudius, Nerva, and others. Eventually it ran out of space. Later emperors were forced to build their own tombs. Hadrian constructed Castel Sant\'Angelo — still visible from the Tiber.' },
+      ],
+      riddle:{
+        text:['Ho costruito la mia tomba prima di vincere le mie battaglie più grandi. Ho dato la mia casa al nome di un altro. Ho governato un impero insistendo di essere solo un cittadino.','Le mie ultime parole erano quelle di un attore. Il mio primo atto fu vendicare un omicidio che mi diede potere.','Non mi sono mai chiamato con quello che ero. Eppure il titolo che ho scelto — "primo cittadino" — è diventato la radice di una parola usata in decine di lingue per indicare il capo di uno Stato.','','Chi sono?','','(Seconda parte: quale parola moderna, usata per un ruolo di governo in molti Paesi oggi, deriva direttamente dal mio titolo "Princeps"?)'],
+        hint:'Il "primo cittadino" di Roma... Pensa ai titoli moderni dei capi di stato o di governo. In inglese inizia con P.',
+        answer:['augusto','augustus','primo imperatore','principe','primo cittadino'],
+        solution:'Sono Augusto (Gaio Giulio Cesare Ottaviano Augusto), il primo imperatore romano. Il titolo "Princeps" ha dato origine alla parola moderna "Principe" — e indirettamente a "Premier" e "Primo Ministro" in molte lingue europee.',
+      },
+      photo:'Augustus\'s last words were: "Have I played my part well? Applaud!" Re-enact the scene in front of the Mausoleum. One group member delivers a final theatrical bow as Augustus. The others are the Roman Senate: some applaud enthusiastically, some look deeply unimpressed, and at least one should be checking an imaginary phone. Most cinematic historical tableau wins.',
+    },
+  },
+};
+
+// ── FINALE PUZZLE DATA ──────────────────────────────────────
+const IMPERATORS = ['Augusto','Adriano','Tito','Nerone','Traiano'];
+const OBJECTS = ['Due obelischi','Iscrizione falsa','Sistema di trappole','Statua colossale','Nessun oggetto specifico'];
+const LUOGHI  = ['Colosseo','Pantheon','Mausoleo di Augusto','Nessun luogo visitato','Per deduzione (esclusione)'];
+const CORRECT_FINALE = {
+  'Augusto':  { obj:'Due obelischi',          luogo:'Mausoleo di Augusto' },
+  'Adriano':  { obj:'Iscrizione falsa',        luogo:'Pantheon' },
+  'Tito':     { obj:'Sistema di trappole',     luogo:'Colosseo' },
+  'Nerone':   { obj:'Statua colossale',        luogo:'Nessun luogo visitato' },
+  'Traiano':  { obj:'Nessun oggetto specifico',luogo:'Per deduzione (esclusione)' },
+};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let state = {
+  group: null,
+  score: 0,
+  currentStop: 0,
+  stopsUnlocked: [true, false, false, false],
+  stopsDone: [false, false, false, false],
+  riddleTries: [0,0,0],
+  riddleSolved: [false,false,false],
+  photoDone: [false,false,false],
+  finaleDone: false,
+  finaleScore: 0,
+  finaleTimerInterval: null,
+  finaleSecondsLeft: 900,
+  geoWatcher: null,
+  lastLat: null,
+  lastLng: null,
+  pointsHistory: [],
+  currentTappa: 0,
+};
+
+let leafletMap = null;
+let leafletUserMarker = null;
+let leafletStopMarkers = [];
+
+// ═══════════════════════════════════════════════════════════
+// SCORES saved to localStorage (shared leaderboard)
+// ═══════════════════════════════════════════════════════════
+function saveScore() {
+  const key = `bring_roma_2026_${state.group}`;
+  localStorage.setItem(key, JSON.stringify({ score:state.score, ts:Date.now() }));
+}
+function loadAllScores() {
+  const groups = ['A','B','C'];
+  return groups.map(g => {
+    const raw = localStorage.getItem(`bring_roma_2026_${g}`);
+    if (!raw) return { group:g, score:0 };
+    try { const d=JSON.parse(raw); return { group:g, score:d.score||0 }; }
+    catch { return { group:g, score:0 }; }
+  }).sort((a,b)=>b.score-a.score);
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════════════════
+function selectGroup(g) {
+  state.group = g;
+  ['A','B','C'].forEach(x => {
+    document.getElementById('sel-'+x).style.display = x===g ? 'block':'none';
+    document.querySelectorAll('.gc-'+x).forEach(el => el.classList.toggle('sel', x===g));
+  });
+}
+
+function doLogin() {
+  if (!state.group) { alert('Seleziona prima il tuo gruppo!'); return; }
+  const pin = document.getElementById('pin-input').value.trim();
+  if (pin !== PINS[state.group]) {
+    document.getElementById('pin-error').style.display = 'block';
+    document.getElementById('pin-input').value = '';
+    return;
+  }
+  document.getElementById('pin-error').style.display = 'none';
+  initApp();
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+function initApp() {
+  document.getElementById('nav-bar').classList.add('visible');
+  document.getElementById('screen-login').classList.remove('active');
+
+  // Apply group class to app
+  const cls = 'grp-'+state.group;
+  document.getElementById('app').classList.add(cls);
+
+  updateAllHeaders();
+  buildStopList();
+  updateFinaleNavState();
+  startGeo();
+  showScreen('map');
+}
+
+function updateAllHeaders() {
+  const g = state.group;
+  document.getElementById('map-group-badge').textContent = 'GRP '+g;
+  document.getElementById('map-score').textContent = state.score+' pts';
+  document.getElementById('tappa-group-badge').textContent = 'GRP '+g;
+  document.getElementById('tappa-score').textContent = state.score+' pts';
+  document.getElementById('finale-score').textContent = state.score+' pts';
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCREEN NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const map = {map:0,tappa:1,finale:2,rank:3};
+  if(map[name]!==undefined) document.querySelectorAll('.nav-item')[map[name]].classList.add('active');
+  // Leaflet needs a size refresh after being hidden
+  if (name === 'map' && leafletMap) {
+    setTimeout(() => leafletMap.invalidateSize(), 50);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// GEOLOCATION
+// ═══════════════════════════════════════════════════════════
+function initLeafletMap(lat, lng) {
+  if (leafletMap) return; // already initialised
+  leafletMap = L.map('map', { zoomControl:false, attributionControl:false }).setView([lat, lng], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:19, attribution:'© OSM'
+  }).addTo(leafletMap);
+  L.control.attribution({ position:'bottomright', prefix:false }).addTo(leafletMap);
+
+  // Group colour for stop markers
+  const grpColor = { A:'#c0201e', B:'#1a3c8f', C:'#2a8a2a' };
+  const col = grpColor[state.group] || '#e0a020';
+
+  // Add stop markers
+  STOPS.forEach((stop, i) => {
+    const isFinale = i === 3;
+    const icon = L.divIcon({
+      html: `<div style="background:${isFinale?'#e0a020':col};color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(0,0,0,.4)">${stop.icon}</div>`,
+      className:'', iconSize:[36,36], iconAnchor:[18,18]
+    });
+    const marker = L.marker([stop.lat, stop.lng], { icon }).addTo(leafletMap);
+    marker.bindPopup(`<b>${stop.name}</b>`);
+    leafletStopMarkers.push(marker);
+  });
+
+  // User position marker
+  const userIcon = L.divIcon({
+    html:`<div style="width:16px;height:16px;background:#fff;border:3px solid ${col};border-radius:50%;box-shadow:0 0 0 6px rgba(255,255,255,.25)"></div>`,
+    className:'', iconSize:[16,16], iconAnchor:[8,8]
+  });
+  leafletUserMarker = L.marker([lat, lng], { icon:userIcon }).addTo(leafletMap);
+}
+
+function startGeo() {
+  if (!navigator.geolocation) {
+    document.getElementById('geo-text').textContent = 'GPS non supportato — sblocca le tappe manualmente.';
+    document.getElementById('geo-dot').className = 'geo-dot inactive';
+    // Still show map centred on Rome
+    initLeafletMap(41.8986, 12.4769);
+    return;
+  }
+  // Initialise map on Rome while waiting for GPS
+  initLeafletMap(41.8986, 12.4769);
+  state.geoWatcher = navigator.geolocation.watchPosition(onGeoSuccess, onGeoError, {
+    enableHighAccuracy:true, maximumAge:5000, timeout:15000
+  });
+}
+
+function onGeoSuccess(pos) {
+  const {latitude:lat, longitude:lng, accuracy} = pos.coords;
+  state.lastLat = lat; state.lastLng = lng;
+  document.getElementById('geo-dot').className = 'geo-dot active';
+  document.getElementById('geo-text').textContent = `GPS attivo · Precisione: ±${Math.round(accuracy)}m`;
+  document.getElementById('coords-display').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+  // Update map
+  if (leafletMap) {
+    if (leafletUserMarker) {
+      leafletUserMarker.setLatLng([lat, lng]);
+    }
+    leafletMap.panTo([lat, lng], { animate:true, duration:1 });
+    // Invalidate size in case map container was hidden on init
+    leafletMap.invalidateSize();
+  }
+
+  checkProximity(lat, lng);
+  updateStopDistances(lat, lng);
+}
+
+function onGeoError(err) {
+  document.getElementById('geo-dot').className = 'geo-dot inactive';
+  document.getElementById('geo-text').textContent = 'GPS non disponibile — sblocco manuale attivo.';
+  if (leafletMap) leafletMap.invalidateSize();
+}
+
+function haversineM(lat1,lng1,lat2,lng2) {
+  const R=6371000, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function checkProximity(lat,lng) {
+  STOPS.forEach((stop,i) => {
+    if (state.stopsUnlocked[i]) return;
+    const prev = state.stopsDone[i-1] || i===0;
+    if (!prev) return;
+    const dist = haversineM(lat,lng,stop.lat,stop.lng);
+    if (dist <= stop.radiusM) unlockStop(i);
+  });
+}
+
+function updateStopDistances(lat,lng) {
+  STOPS.forEach((stop,i) => {
+    const el = document.getElementById('stop-dist-'+i);
+    if (!el) return;
+    const d = haversineM(lat,lng,stop.lat,stop.lng);
+    el.textContent = d<1000 ? `${Math.round(d)}m di distanza` : `${(d/1000).toFixed(1)}km di distanza`;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// STOP LIST
+// ═══════════════════════════════════════════════════════════
+function buildStopList() {
+  const ul = document.getElementById('stop-list');
+  ul.innerHTML = '';
+  STOPS.forEach((stop,i) => {
+    const isFinale = i===3;
+    const unlocked = state.stopsUnlocked[i];
+    const done = state.stopsDone[i];
+    const active = !done && unlocked;
+    let cls = 'stop-item ' + (done?'done': active?'active':'locked');
+    const temaLabel = isFinale ? 'MEGA SFIDA FINALE' : (THEMES[state.group][i] || '');
+    const statusIcon = done?'✅': active?'▶️':'🔒';
+    const div = document.createElement('div');
+    div.className = cls;
+    div.id = 'stop-row-'+i;
+    div.innerHTML = `
+      <div class="stop-num" style="background:${done?'#2a8a2a':active?'#e0a020':'rgba(255,255,255,.1)'}; color:${active?'#000':'#fff'}">${stop.icon}</div>
+      <div class="stop-info">
+        <div class="stop-name">${stop.name}</div>
+        <div class="stop-dist" id="stop-dist-${i}">${temaLabel}</div>
+      </div>
+      <div class="stop-status">${statusIcon}</div>
+    `;
+    if (active || (unlocked && !done)) {
+      div.onclick = () => isFinale ? showScreen('finale') : openTappa(i);
+    }
+    if (!unlocked && i>0) {
+      div.title = 'Completa la tappa precedente per sbloccare';
+    }
+    ul.appendChild(div);
+  });
+  updateProgressDots();
+}
+
+function updateProgressDots() {
+  document.querySelectorAll('.progress-dots .dot').forEach((dot,i) => {
+    dot.className = 'dot';
+    if(state.stopsDone[i]) dot.classList.add('done');
+    else if(state.stopsUnlocked[i]) dot.classList.add('active');
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// UNLOCK STOP
+// ═══════════════════════════════════════════════════════════
+function unlockStop(i) {
+  state.stopsUnlocked[i] = true;
+  const stop = STOPS[i];
+  const ov = document.getElementById('unlock-overlay');
+  document.getElementById('unlock-icon').textContent = stop.icon;
+  document.getElementById('unlock-title').textContent = i===3 ? 'FINALE SBLOCCATO!' : 'TAPPA SBLOCCATA!';
+  document.getElementById('unlock-sub').textContent = `Sei arrivato: ${stop.name}`;
+  ov.classList.add('show');
+  buildStopList();
+}
+
+function closeUnlock() {
+  document.getElementById('unlock-overlay').classList.remove('show');
+}
+
+// Manual unlock button (for accompaniers/fallback)
+function manualUnlock(i) {
+  unlockStop(i);
+}
+
+// ═══════════════════════════════════════════════════════════
+// OPEN TAPPA
+// ═══════════════════════════════════════════════════════════
+function openTappa(stopIdx) {
+  state.currentTappa = stopIdx;
+  const stopId = STOPS[stopIdx].id;
+  const g = state.group;
+  const data = CONTENT[stopId][g];
+  if (!data) return;
+
+  document.getElementById('tappa-header-name').textContent = STOPS[stopIdx].icon+' '+STOPS[stopIdx].name;
+  document.getElementById('tappa-header-tema').textContent = TEMA_ICONS[data.tema]+' '+data.tema;
+  document.getElementById('tappa-score').textContent = state.score+' pts';
+
+  const c = document.getElementById('tappa-content');
+  c.innerHTML = '';
+
+  // Hero
+  const hero = document.createElement('div');
+  hero.className = 'tappa-hero';
+  hero.style.background = data.heroColor;
+  hero.innerHTML = `
+    <div class="tappa-hero-inner">
+      <div class="tappa-num">TAPPA ${stopIdx+1} DI 3</div>
+      <div class="tappa-name">${STOPS[stopIdx].name.toUpperCase()}</div>
+      <div class="tappa-tema">${TEMA_ICONS[data.tema]} ${data.tema}</div>
+    </div>
+  `;
+  c.appendChild(hero);
+
+  // FACTS
+  const factsCard = document.createElement('div');
+  factsCard.className = 'section-card facts-card';
+  factsCard.innerHTML = `<div class="section-title"><span class="section-title-icon">💡</span> CURIOSITÀ — FUN FACTS</div>`;
+  data.facts.forEach(f => {
+    const item = document.createElement('div');
+    item.className = 'fact-item';
+    item.innerHTML = `<div class="fact-arrow">→</div><div class="fact-text"><span class="tag tag-${f.lang.toLowerCase()}">${f.lang}</span> <span style="margin-left:4px">${f.text}</span></div>`;
+    factsCard.appendChild(item);
+  });
+  c.appendChild(factsCard);
+
+  // RIDDLE
+  const riddleSolved = state.riddleSolved[stopIdx];
+  const tries = state.riddleTries[stopIdx];
+  const riddleCard = document.createElement('div');
+  riddleCard.className = 'section-card riddle-card';
+  const riddleHtml = data.riddle.text.map(l=>l?`<p>${l}</p>`:'<br>').join('');
+  riddleCard.innerHTML = `
+    <div class="section-title"><span class="section-title-icon">🧠</span> INDOVINELLO</div>
+    <div class="riddle-text">${riddleHtml}</div>
+    <div class="riddle-hint">💬 ${data.riddle.hint}</div>
+    <div class="answer-section" id="answer-section-${stopIdx}">
+      ${riddleSolved ? `
+        <div class="attempt-feedback feedback-solved" style="display:block">
+          ✅ Già risolto! +${tries===0?10:5} punti guadagnati.
+        </div>
+        <div style="background:rgba(42,138,42,.1);border:1px solid rgba(42,138,42,.3);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:13px;opacity:.9">
+          <b>Soluzione:</b> ${data.riddle.solution}
+        </div>
+      ` : `
+        <div class="answer-label">La tua risposta</div>
+        <textarea class="answer-input" id="answer-input-${stopIdx}" placeholder="Scrivi qui la tua risposta..." rows="3"></textarea>
+        <div class="attempt-feedback" id="feedback-${stopIdx}"></div>
+        <div style="font-size:12px;opacity:.5;margin-top:6px;text-align:center">Tentativo ${tries+1}/2 · ${tries===0?'10':'5'} punti se corretto</div>
+        <button class="btn btn-primary" onclick="submitAnswer(${stopIdx})" style="margin-top:12px">INVIA RISPOSTA</button>
+        ${tries>=1 ? `
+          <button class="btn btn-secondary" onclick="showSolution(${stopIdx})" style="margin-top:8px;font-size:14px">Mostra soluzione (0 pts)</button>
+          <div class="override-badge" onclick="requestRiddleOverride(${stopIdx})">🔐 Accompagnatore: approva risposta manualmente</div>
+        ` : `
+          <div class="override-badge" onclick="requestRiddleOverride(${stopIdx})" style="margin-top:10px">🔐 Accompagnatore: override risposta</div>
+        `}
+      `}
+    </div>
+  `;
+  c.appendChild(riddleCard);
+
+  // PHOTO
+  const photoDone = state.photoDone[stopIdx];
+  const photoCard = document.createElement('div');
+  photoCard.className = 'section-card photo-card';
+  photoCard.innerHTML = `
+    <div class="section-title"><span class="section-title-icon">📸</span> PHOTO CHALLENGE</div>
+    <div class="photo-text">${data.photo}</div>
+    ${photoDone ? `
+      <div style="background:rgba(42,138,42,.15);border:1px solid rgba(42,138,42,.4);border-radius:12px;padding:14px;margin-top:14px;text-align:center">
+        <div style="font-size:22px;margin-bottom:4px">✅</div>
+        <div style="font-weight:800;color:#aaffaa">Foto approvata dall'accompagnatore!</div>
+        <div style="font-size:12px;opacity:.6;margin-top:4px">+10 punti guadagnati</div>
+      </div>
+    ` : `
+      <div class="photo-btn-row">
+        <button class="photo-btn photo-take" onclick="openCamera(${stopIdx})">📷 Apri fotocamera</button>
+        <button class="photo-btn photo-done" onclick="requestPhotoApproval(${stopIdx})" style="background:rgba(224,160,32,.2);border:1px solid rgba(224,160,32,.5);color:var(--gold)">
+          🔐 Chiedi approvazione
+        </button>
+      </div>
+      <div style="font-size:11px;opacity:.45;margin-top:8px;text-align:center">
+        Scatta la foto, poi mostrala all'accompagnatore per farla approvare
+      </div>
+    `}
+  `;
+  c.appendChild(photoCard);
+
+  // COMPLETE TAPPA button
+  if (!state.stopsDone[stopIdx] && riddleSolved && photoDone) {
+    const completeBtn = document.createElement('button');
+    completeBtn.className = 'btn btn-success';
+    completeBtn.textContent = '🎯 TAPPA COMPLETATA — VAI AVANTI';
+    completeBtn.onclick = () => completeTappa(stopIdx);
+    c.appendChild(completeBtn);
+  }
+
+  showScreen('tappa');
+}
+
+// ═══════════════════════════════════════════════════════════
+// ANSWER CHECKING
+// ═══════════════════════════════════════════════════════════
+function normalise(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').trim();
+}
+
+function checkAnswer(stopIdx, userAnswer) {
+  const stopId = STOPS[stopIdx].id;
+  const data = CONTENT[stopId][state.group];
+  const norm = normalise(userAnswer);
+  return data.riddle.answer.some(a => norm.includes(normalise(a)));
+}
+
+function submitAnswer(stopIdx) {
+  const inp = document.getElementById('answer-input-'+stopIdx);
+  if (!inp || !inp.value.trim()) { alert('Scrivi prima una risposta!'); return; }
+  const tries = state.riddleTries[stopIdx];
+  const correct = checkAnswer(stopIdx, inp.value);
+
+  if (correct) {
+    const pts = tries===0 ? 10 : 5;
+    state.riddleSolved[stopIdx] = true;
+    awardPoints(pts, tries===0 ? '🎯 Perfetto! Prima risposta!' : '✅ Corretto!');
+    openTappa(stopIdx); // re-render
+  } else {
+    state.riddleTries[stopIdx]++;
+    const fb = document.getElementById('feedback-'+stopIdx);
+    fb.className = 'attempt-feedback feedback-wrong';
+    fb.style.display = 'block';
+    if (tries+1 >= 2) {
+      fb.textContent = '❌ Sbagliato. Puoi mostrare la soluzione o riprovare.';
+      openTappa(stopIdx);
+    } else {
+      fb.textContent = '❌ Non esatto — riprova! Hai ancora 1 tentativo (5 punti).';
+    }
+  }
+}
+
+function showSolution(stopIdx) {
+  state.riddleSolved[stopIdx] = true;
+  openTappa(stopIdx);
+}
+
+function confirmPhoto(stopIdx) {
+  if (state.photoDone[stopIdx]) return;
+  state.photoDone[stopIdx] = true;
+  awardPoints(10, '📸 Foto approvata!');
+  openTappa(stopIdx);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN PIN MODAL SYSTEM
+// ═══════════════════════════════════════════════════════════
+let adminCallback = null; // function to call after PIN confirmed
+
+function openAdminModal(contextHtml, subText, onConfirm) {
+  adminCallback = onConfirm;
+  document.getElementById('admin-modal-context').innerHTML = contextHtml;
+  document.getElementById('admin-modal-sub').textContent = subText || 'Inserisci il PIN accompagnatore per confermare';
+  document.getElementById('admin-pin-input').value = '';
+  document.getElementById('admin-error').textContent = '';
+  document.getElementById('admin-modal-bg').classList.add('show');
+  setTimeout(() => document.getElementById('admin-pin-input').focus(), 100);
+}
+
+function closeAdminModal() {
+  document.getElementById('admin-modal-bg').classList.remove('show');
+  adminCallback = null;
+}
+
+function submitAdminPin() {
+  const pin = document.getElementById('admin-pin-input').value.trim();
+  if (pin !== ADMIN_PIN) {
+    document.getElementById('admin-error').textContent = '❌ PIN errato. Riprova.';
+    document.getElementById('admin-pin-input').value = '';
+    document.getElementById('admin-pin-input').focus();
+    return;
+  }
+  closeAdminModal();
+  if (adminCallback) adminCallback();
+}
+
+// Allow Enter key in admin PIN input
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('admin-pin-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitAdminPin();
+  });
+});
+
+// ── PHOTO APPROVAL via admin PIN ────────────────────────────
+function requestPhotoApproval(stopIdx) {
+  const stopName = STOPS[stopIdx].name;
+  const contextHtml = `
+    <b>📸 Photo Challenge — ${stopName}</b><br>
+    <span style="opacity:.7;font-size:12px">Gruppo ${state.group} · Tappa ${stopIdx+1}</span><br><br>
+    Hai visto la foto del gruppo e ritieni che abbiano completato la sfida in modo creativo e corretto?
+  `;
+  openAdminModal(contextHtml, '✅ Approva foto per +10 punti', () => {
+    confirmPhoto(stopIdx);
+  });
+}
+
+// ── RIDDLE OVERRIDE via admin PIN ───────────────────────────
+function requestRiddleOverride(stopIdx) {
+  const stopId = STOPS[stopIdx].id;
+  const data = CONTENT[stopId][state.group];
+  const inp = document.getElementById('answer-input-'+stopIdx);
+  const userAnswer = inp ? inp.value.trim() : '(risposta non leggibile)';
+  const tries = state.riddleTries[stopIdx];
+  const pts = tries === 0 ? 10 : 5;
+  const contextHtml = `
+    <b>🧠 Indovinello — ${STOPS[stopIdx].name}</b><br>
+    <span style="opacity:.7;font-size:12px">Gruppo ${state.group} · Tentativo ${tries+1}</span><br><br>
+    <b>Risposta data:</b><br>
+    <span style="font-style:italic;opacity:.85">"${userAnswer || '(vuota)'}"</span><br><br>
+    <b>Soluzione attesa:</b><br>
+    <span style="font-size:12px;opacity:.7">${data.riddle.solution}</span><br><br>
+    La risposta del gruppo è corretta o accettabile secondo il tuo giudizio?<br>
+    <span style="font-size:12px;color:var(--gold)">Confermare assegna <b>+${pts} punti</b></span>
+  `;
+  openAdminModal(contextHtml, `Approva risposta per +${pts} punti`, () => {
+    const pt = state.riddleTries[stopIdx] === 0 ? 10 : 5;
+    state.riddleSolved[stopIdx] = true;
+    awardPoints(pt, '🎯 Risposta approvata dall\'accompagnatore!');
+    openTappa(stopIdx);
+  });
+}
+
+let _pendingPhotoStopIdx = null;
+
+function openCamera(stopIdx) {
+  _pendingPhotoStopIdx = stopIdx;
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.capture = 'environment';
+  inp.style.display = 'none';
+  inp.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      document.getElementById('photo-preview-img').src = ev.target.result;
+      document.getElementById('photo-preview-label').textContent =
+        `Tappa ${stopIdx+1} — ${STOPS[stopIdx].name}`;
+      document.getElementById('photo-approve-btn').onclick =
+        () => { closePhotoPreview(); requestPhotoApproval(stopIdx); };
+      document.getElementById('photo-preview-bg').classList.add('show');
+    };
+    reader.readAsDataURL(file);
+    document.body.removeChild(inp);
+  };
+  document.body.appendChild(inp);
+  inp.click();
+}
+
+function closePhotoPreview() {
+  document.getElementById('photo-preview-bg').classList.remove('show');
+  document.getElementById('photo-preview-img').src = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPLETE TAPPA
+// ═══════════════════════════════════════════════════════════
+function completeTappa(stopIdx) {
+  state.stopsDone[stopIdx] = true;
+  // Unlock next stop
+  if (stopIdx+1 < STOPS.length) {
+    state.stopsUnlocked[stopIdx+1] = true;
+  }
+  buildStopList();
+  updateFinaleNavState();
+  saveScore();
+  showScreen('map');
+  // Speed bonus
+  awardPoints(5, '⚡ Speed bonus!');
+}
+
+// Fix 4: Finale locked until all 3 tappe done
+function updateFinaleNavState() {
+  const allDone = state.stopsDone[0] && state.stopsDone[1] && state.stopsDone[2];
+  const lbl = document.getElementById('nav-finale-label');
+  const btn = document.getElementById('nav-finale-btn');
+  if (lbl) lbl.textContent = allDone ? 'Finale' : 'Finale 🔒';
+  if (btn) btn.style.opacity = allDone ? '1' : '0.4';
+}
+
+function tryShowFinale() {
+  const allDone = state.stopsDone[0] && state.stopsDone[1] && state.stopsDone[2];
+  if (!allDone) {
+    const done = state.stopsDone.slice(0,3).filter(Boolean).length;
+    // Show friendly toast instead of alert
+    showToast(`🔒 Completa prima tutte e 3 le tappe! (${done}/3 completate)`);
+    return;
+  }
+  showScreen('finale');
+}
+
+// ═══════════════════════════════════════════════════════════
+// POINTS
+// ═══════════════════════════════════════════════════════════
+// ── TOAST (non-blocking message) ────────────────────────────
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:700;z-index:1100;max-width:320px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.5)';
+  document.body.appendChild(t);
+  setTimeout(() => t.style.opacity='0', 2200);
+  setTimeout(() => document.body.removeChild(t), 2600);
+}
+
+function awardPoints(pts, label) {
+  state.score += pts;
+  state.pointsHistory.push({ pts, label, time: new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) });
+  updateAllHeaders();
+  saveScore();
+  showPointsPopup(pts, label);
+}
+
+function showPointsPopup(pts, label) {
+  const pop = document.getElementById('points-popup');
+  document.getElementById('popup-pts').textContent = '+'+pts;
+  document.getElementById('popup-label').textContent = label;
+  pop.classList.add('show');
+  setTimeout(()=>pop.classList.remove('show'), 1800);
+}
+
+// ═══════════════════════════════════════════════════════════
+// FINALE
+// ═══════════════════════════════════════════════════════════
+function startFinale() {
+  document.getElementById('finale-start-btn').style.display='none';
+  document.getElementById('finale-puzzle').style.display='block';
+  document.getElementById('finale-timer').style.display='flex';
+  buildMatchTable();
+  startTimer();
+}
+
+function buildMatchTable() {
+  const tbody = document.getElementById('match-tbody');
+  tbody.innerHTML = '';
+  IMPERATORS.forEach(imp => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${imp}</td>
+      <td>
+        <select class="match-select" id="obj-${imp}">
+          <option value="">— oggetto —</option>
+          ${OBJECTS.map(o=>`<option value="${o}">${o}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select class="match-select" id="loc-${imp}">
+          <option value="">— luogo —</option>
+          ${LUOGHI.map(l=>`<option value="${l}">${l}</option>`).join('')}
+        </select>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function startTimer() {
+  state.finaleSecondsLeft = 900;
+  updateTimerDisplay();
+  state.finaleTimerInterval = setInterval(()=>{
+    state.finaleSecondsLeft--;
+    updateTimerDisplay();
+    if(state.finaleSecondsLeft<=0){
+      clearInterval(state.finaleTimerInterval);
+      submitFinale();
+    }
+  },1000);
+}
+
+function updateTimerDisplay() {
+  const m=Math.floor(state.finaleSecondsLeft/60), s=state.finaleSecondsLeft%60;
+  const el=document.getElementById('timer-display');
+  el.textContent=`${m}:${s.toString().padStart(2,'0')}`;
+  el.style.color = state.finaleSecondsLeft<=60?'var(--bring-red)':state.finaleSecondsLeft<=180?'var(--gold)':'var(--bring-red)';
+}
+
+function submitFinale() {
+  clearInterval(state.finaleTimerInterval);
+  let correct=0;
+  let details='';
+  IMPERATORS.forEach(imp=>{
+    const obj=document.getElementById('obj-'+imp)?.value||'';
+    const loc=document.getElementById('loc-'+imp)?.value||'';
+    const right=CORRECT_FINALE[imp];
+    const ok=(obj===right.obj && loc===right.luogo);
+    if(ok) correct++;
+    const icon=ok?'✅':'❌';
+    details+=`<div class="ph-row">${icon} <b>${imp}</b>: ${obj||'—'} · ${loc||'—'}</div>`;
+  });
+  const pts=correct*6;
+  state.finaleScore=pts;
+  awardPoints(pts,'🧩 Mega Sfida!');
+
+  const soluzioneHtml=IMPERATORS.map(imp=>{
+    const r=CORRECT_FINALE[imp];
+    return `<div class="ph-row"><b>${imp}</b>: ${r.obj} · ${r.luogo}</div>`;
+  }).join('');
+
+  document.getElementById('finale-puzzle').style.display='none';
+  document.getElementById('finale-result').style.display='block';
+  document.getElementById('finale-result').innerHTML=`
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-family:'Bebas Neue';font-size:60px;color:var(--gold)">${correct}/5</div>
+      <div style="font-size:16px;font-weight:800">risposte corrette · +${pts} punti</div>
+    </div>
+    <div class="section-title"><span class="section-title-icon">📋</span> LE TUE RISPOSTE</div>
+    <div class="points-history" style="margin-bottom:16px">${details}</div>
+    <div class="section-title"><span class="section-title-icon">✅</span> SOLUZIONE CORRETTA</div>
+    <div class="points-history">${soluzioneHtml}</div>
+    <button class="btn btn-primary" onclick="showScreen('rank');buildLeaderboard()" style="margin-top:20px">🏆 VEDI CLASSIFICA FINALE</button>
+  `;
+  saveScore();
+}
+
+// ═══════════════════════════════════════════════════════════
+// LEADERBOARD
+// ═══════════════════════════════════════════════════════════
+function buildLeaderboard() {
+  const scores = loadAllScores();
+  const medals = ['🥇','🥈','🥉'];
+  const grpNames = { A:'Gruppo A — Arte', B:'Gruppo B — Storia', C:'Gruppo C — Curiosità' };
+  const grpColors = { A:'var(--bring-red)', B:'#6699ff', C:'#66cc66' };
+
+  let html = `<div style="text-align:center;margin-bottom:24px;padding:20px;background:rgba(224,160,32,.1);border:2px solid rgba(224,160,32,.3);border-radius:var(--radius)">
+    <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:3px;opacity:.7">CLASSIFICA IN TEMPO REALE</div>
+    <div style="font-size:12px;opacity:.5;margin-top:4px">Si aggiorna ogni volta che apri questa schermata</div>
+  </div>
+  <div class="leaderboard">`;
+
+  scores.forEach((s,i)=>{
+    html+=`<div class="lb-row lb-${i+1}">
+      <div class="lb-pos">${medals[i]}</div>
+      <div class="lb-info">
+        <div class="lb-name" style="color:${grpColors[s.group]}">${grpNames[s.group]}</div>
+        <div class="lb-detail">PIN registrato · Posizione ${i+1}</div>
+      </div>
+      <div class="lb-pts">${s.score}</div>
+    </div>`;
+  });
+
+  html+=`</div>
+  <div style="margin-top:24px">
+    <div class="section-title"><span class="section-title-icon">📊</span> I TUOI PUNTI</div>
+    <div class="points-history">
+      ${state.pointsHistory.slice(-10).reverse().map(p=>`
+        <div class="ph-row">
+          <span>${p.label}</span>
+          <span class="ph-pts">+${p.pts}</span>
+        </div>
+      `).join('') || '<div class="ph-row" style="opacity:.5">Nessun punto ancora</div>'}
+    </div>
+  </div>
+  <div style="margin-top:20px;text-align:center">
+    <button class="btn btn-secondary" style="max-width:240px" onclick="buildLeaderboard()">🔄 Aggiorna</button>
+  </div>`;
+
+  document.getElementById('rank-content').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MANUAL UNLOCK (for teacher/fallback — shake or button)
+// ═══════════════════════════════════════════════════════════
+// Triple-tap the header logo to get manual unlock options
+let tapCount=0, tapTimer=null;
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.header-logo').forEach(el=>{
+    el.addEventListener('click',()=>{
+      tapCount++;
+      clearTimeout(tapTimer);
+      tapTimer=setTimeout(()=>tapCount=0,800);
+      if(tapCount>=3){
+        tapCount=0;
+        showManualUnlock();
+      }
+    });
+  });
+});
+
+function showManualUnlock() {
+  const names=STOPS.map((s,i)=>`${s.icon} ${s.name} ${state.stopsUnlocked[i]?'(già sbloccata)':''}`);
+  const idx=STOPS.findIndex((s,i)=>!state.stopsUnlocked[i]);
+  if(idx===-1){alert('Tutte le tappe sono già sbloccate!');return;}
+  if(confirm(`Sbloccare manualmente:\n"${STOPS[idx].name}"?\n\n(Solo per emergenze — normalmente si sblocca con il GPS)`)){
+    manualUnlock(idx);
+  }
+}
+</script>
+</body>
+</html>
